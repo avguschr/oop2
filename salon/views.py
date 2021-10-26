@@ -1,6 +1,6 @@
 from knox.models import AuthToken
 from rest_framework import generics, status, viewsets
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -97,4 +97,39 @@ class AddCartView(generics.UpdateAPIView):
     serializer_class = AddCartSerializer
     lookup_field = 'pk'
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
 
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Service add to card"})
+
+        else:
+            return Response({"message": "failed", "details": serializer.errors})
+
+
+class DeleteServiceFromCartView(generics.DestroyAPIView):
+    serializer_class = ServiceSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        cart = Cart.objects.filter(owner=self.request.user, is_active=True).first()
+        return cart.services.all()
+
+    def destroy(self, request, *args, **kwargs):
+        cart = Cart.objects.filter(owner=self.request.user, is_active=True).first()
+        cart.services.remove(self.get_object())
+        return Response({"message": "Item removed from cart"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class AddServiceView(RetrieveAPIView):
+    serializer_class = ServiceSerializer
+
+    def get_queryset(self):
+        return Service.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        cart = Cart.objects.filter(owner=self.request.user, is_active=True).first()
+        cart.services.add(self.get_object())
+        return Response({"message": "Service add to card"}, status=status.HTTP_201_CREATED)
