@@ -16,3 +16,28 @@ class User(AbstractUser):
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+
+
+class Service(models.Model):
+    name = models.CharField(max_length=128, null=False)
+    description = models.TextField(null=False)
+    cost = models.IntegerField(null=False)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Услуга'
+        verbose_name_plural = 'Услуги'
+
+
+class Cart(models.Model):
+    owner = models.ForeignKey('User', on_delete=models.CASCADE, null=False)
+    services = models.ManyToManyField(Service, blank=True, related_name='cart')
+    is_active = models.BooleanField(default=True, null=False)
+
+    class Meta:
+        verbose_name = 'Корзина'
+        verbose_name_plural = 'Корзины'
+
+

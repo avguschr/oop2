@@ -1,11 +1,11 @@
-from abc import ABC
-
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
 from rest_framework.validators import UniqueValidator
 
-from salon.models import User
+from salon.models import User, Service, Cart
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -45,33 +45,74 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-# class LoginSerializer(serializers.Serializer):
-#     email = serializers.EmailField(required=True, max_length=255)
-#     password = serializers.CharField(max_length=128, write_only=True)
-#     token = serializers.CharField(max_length=255, read_only=True)
-#
-#     def validate(self, data):
-#         email = data.get('email', None)
-#         password = data.get('password', None)
-#         token = data.get('token', None)
-#
-#         if email is None:
-#             raise serializers.ValidationError(
-#                 'An email address is required!'
-#             )
-#         if password is None:
-#             raise serializers.ValidationError(
-#                 'A password is required!'
-#             )
-#         if token is None:
-#             raise serializers.ValidationError(
-#                 'A token is required!'
-#             )
-#         user = authenticate(username=email, password=password, token=token)
-#         if user is None:
-#             raise serializers.ValidationError(
-#                 'A user with this email and password was not found!'
-#             )
-#         return {
-#             'email': user.email,
-#         }
+class LoginSerializer(ModelSerializer):
+    username_field = 'email'
+
+    username = serializers.EmailField(required=True, max_length=255)
+    password = serializers.CharField(max_length=128, write_only=True, style={'input_type': 'password'})
+
+    def validate(self, data):
+        email = data.get('email', None)
+        password = data.get('password', None)
+
+        if email is None:
+            raise serializers.ValidationError(
+                'An email address is required!'
+            )
+        if password is None:
+            raise serializers.ValidationError(
+                'A password is required!'
+            )
+        user = authenticate(email=email, password=password)
+        if user is None:
+            raise serializers.ValidationError(
+                'A user with this email and password was not found!'
+            )
+        return {
+            'email': user.email,
+        }
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'password'
+        )
+
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = (
+            'id',
+            'name',
+            'description',
+            'cost'
+        )
+
+
+class CartSerializer(serializers.ModelSerializer):
+    services = ServiceSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Cart
+        fields = (
+            'id',
+            'services',
+        )
+
+
+class AddCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cart
+        fields = (
+            'services',
+        )
+
+
+class CreateCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cart
+        fields = (
+            'services',
+        )
