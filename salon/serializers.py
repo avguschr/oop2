@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 from rest_framework.validators import UniqueValidator
 
-from salon.models import User, Service, Cart
+from salon.models import *
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -90,7 +90,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             'cost'
         )
 
-
+########################
 class CartSerializer(serializers.ModelSerializer):
     services = ServiceSerializer(read_only=True, many=True)
 
@@ -102,12 +102,6 @@ class CartSerializer(serializers.ModelSerializer):
         )
 
 
-class AddCartSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Cart
-        fields = (
-            'services',
-        )
 
 
 class CreateCartSerializer(serializers.ModelSerializer):
@@ -115,4 +109,24 @@ class CreateCartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = (
             'services',
+        )
+
+########################
+
+class OrderSerializer(serializers.ModelSerializer):
+    services = ServiceSerializer(read_only=True, many=True)
+    class Meta:
+        model = Order
+        fields = (
+            'id',
+            'services'
+        )
+
+
+class CreateOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = (
+            'phone',
+            'comment'
         )

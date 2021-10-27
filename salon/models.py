@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import RegexValidator
 
 
 class User(AbstractUser):
@@ -41,3 +42,14 @@ class Cart(models.Model):
         verbose_name_plural = 'Корзины'
 
 
+
+class Order(models.Model):
+    phoneNumberRegex = RegexValidator(regex=r"^\+?1?\d{8,15}$")
+    owner = models.ForeignKey('User', on_delete=models.CASCADE, null=False)
+    services = models.ManyToManyField(Service, blank=False, null=False, related_name='order')
+    phone = models.CharField(validators=[phoneNumberRegex], max_length=16, null=True)
+    comment = models.TextField(null=True, blank=True)
+    sum = models.IntegerField(null=False)
+    class Meta:
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Заказы'

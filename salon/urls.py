@@ -10,8 +10,8 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('services/', ServicesView.as_view(), name='services'),
     path('cart/', CartView.as_view({'get': 'list'}), name='cart'),
-    path('addCart/<int:pk>/', AddCartView.as_view(), name='addCart'),
-    path('createCart/', CreateCartView.as_view(), name='createCart'),
     path('deleteService/<int:pk>/', DeleteServiceFromCartView.as_view(), name='deleteService'),
-    path('cart/<int:pk>/', AddServiceView.as_view(), name='addService')
+    path('cart/<int:pk>/', AddServiceView.as_view(), name='addService'),
+    path('orders/', OrderView.as_view({'get': 'list'}), name='order'),
+    path('createOrder/', CreateOrderView.as_view(), name='createOrder')
 ]
