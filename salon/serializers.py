@@ -90,6 +90,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             'cost'
         )
 
+
 ########################
 class CartSerializer(serializers.ModelSerializer):
     services = ServiceSerializer(read_only=True, many=True)
@@ -102,8 +103,6 @@ class CartSerializer(serializers.ModelSerializer):
         )
 
 
-
-
 class CreateCartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
@@ -111,10 +110,12 @@ class CreateCartSerializer(serializers.ModelSerializer):
             'services',
         )
 
+
 ########################
 
 class OrderSerializer(serializers.ModelSerializer):
     services = ServiceSerializer(read_only=True, many=True)
+
     class Meta:
         model = Order
         fields = (
@@ -129,4 +130,12 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         fields = (
             'phone',
             'comment'
+        )
+
+
+class CreateServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = (
+            '__all__'
         )
