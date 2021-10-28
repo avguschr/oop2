@@ -278,3 +278,5 @@ class DeleteServiceView(generics.DestroyAPIView):
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({"message": "Service removed"}, status=status.HTTP_200_OK)
+
+#
