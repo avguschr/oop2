@@ -24,6 +24,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from salon.csrf import CsrfExemptSessionAuthentication
+from knox import views as knox_views
 
 
 class EmailAuthTokenSerializer(AuthTokenSerializer):
@@ -68,9 +69,10 @@ class UserViewSet(ListCreateAPIView):
 
 
 class RegisterView(generics.CreateAPIView):
+    permission_classes = [permissions.AllowAny]
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-
+    authentication_classes = (CsrfExemptSessionAuthentication,)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -80,9 +82,11 @@ class RegisterView(generics.CreateAPIView):
         return Response({"token": AuthToken.objects.create(user)[1]}, status=status.HTTP_201_CREATED, headers=headers)
 
 
+
+
 class LoginView(KnoxLoginView):
     permission_classes = (permissions.AllowAny,)
-    authentication_classes = (CsrfExemptSessionAuthentication, knox.auth.TokenAuthentication)
+    authentication_classes = (TokenAuthentication,)
     serializer_class = LoginSerializer
 
     def post(self, request, format=None):
@@ -98,15 +102,21 @@ class LoginView(KnoxLoginView):
         data = {
             'token': token
         }
+
+        dataReturn = {
+            'token': token
+        }
         if UserSerializer is not None:
             data["user"] = UserSerializer(
                 request.user,
                 context=self.get_context()
             ).data
-        return data
+        return dataReturn
 
 
 class ServicesView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = (TokenAuthentication,)
     def get(self, request):
         services = Service.objects.all()
         serializer = ServiceSerializer(services, many=True)
@@ -114,6 +124,7 @@ class ServicesView(APIView):
 
 
 class CartView(viewsets.ModelViewSet):
+    authentication_classes = (TokenAuthentication,)
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user)
 
@@ -156,7 +167,7 @@ class AddCartView(generics.UpdateAPIView):
 class DeleteServiceFromCartView(generics.DestroyAPIView):
     serializer_class = ServiceSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    authentication_classes = (CsrfExemptSessionAuthentication,)
+    authentication_classes = (TokenAuthentication,)
 
     def get_queryset(self):
         cart = Cart.objects.filter(owner=self.request.user, is_active=True).first()
@@ -170,7 +181,7 @@ class DeleteServiceFromCartView(generics.DestroyAPIView):
 
 class AddServiceView(RetrieveAPIView):
     serializer_class = ServiceSerializer
-
+    authentication_classes = (TokenAuthentication,)
     def get_queryset(self):
         return Service.objects.all()
 
@@ -184,6 +195,8 @@ class OrderView(viewsets.ModelViewSet):
     def get_queryset(self):
         return Order.objects.filter(owner=self.request.user)
 
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = OrderSerializer
 
 
@@ -191,49 +204,47 @@ class CreateOrderView(generics.CreateAPIView):
     queryset = Order.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = CreateOrderSerializer
-
+    authentication_classes = (TokenAuthentication,)
     def perform_create(self, serializer):
         cart = Cart.objects.filter(owner=self.request.user, is_active=True).first()
-        services = cart.services.all()
+        if cart is not None:
+            services = cart.services.all()
 
-        cart_data = cart.services.aggregate(models.Sum('cost'), models.Count('id'))
-        if cart_data.get('cost__sum'):
-            cost_sum = cart_data['cost__sum']
-        else:
-            cost_sum = 0
+            cart_data = cart.services.aggregate(models.Sum('cost'), models.Count('id'))
+            if cart_data.get('cost__sum'):
+                cost_sum = cart_data['cost__sum']
+            else:
+                cost_sum = 0
 
-        serializer.save(owner=self.request.user, services=services, sum=cost_sum)
-        cart.is_active = False
-        cart.save()
+            serializer.save(owner=self.request.user, services=services, sum=cost_sum)
+            cart.is_active = False
+            cart.save()
 
     def create(self, request, *args, **kwargs):
+        cart = Cart.objects.filter(owner=self.request.user, is_active=True).first()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response({}, status=status.HTTP_201_CREATED, headers=headers)
+        if cart is None:
+            return Response({"message": "Cart is empty"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY, headers=headers)
+        return Response({"message":"Order is processed"}, status=status.HTTP_201_CREATED, headers=headers)
 
 
-# @action(detail=False, methods=['post'])
-# def logout(request):
-#     request.session['user'].delete()
-#
-#     return Response(status=status.HTTP_200_OK)
 
 
-class LogoutView(APIView):
+class LogoutView(knox_views.LogoutView):
     authentication_classes = (TokenAuthentication,)
-
-    permission_classes = (IsAuthenticated,)
 
     def post(self, request, format=None):
         request._auth.delete()
         user_logged_out.send(sender=request.user.__class__,
                              request=request, user=request.user)
-        return Response(None, status=status.HTTP_204_NO_CONTENT)
+        return Response({"message":"Log out"}, status=status.HTTP_204_NO_CONTENT)
 
 
 class CreateServiceView(generics.CreateAPIView):
+    authentication_classes = (TokenAuthentication,)
     queryset = Service.objects.all()
     permission_classes = [permissions.IsAdminUser]
     serializer_class = CreateServiceSerializer
@@ -245,7 +256,7 @@ class CreateServiceView(generics.CreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        return Response({"id": service.id, "message:": "Service added"}, status=status.HTTP_201_CREATED,
+        return Response({"id": service.id, "message": "Service added"}, status=status.HTTP_201_CREATED,
                         headers=headers)
 
 
@@ -254,7 +265,7 @@ class UpdateServiceView(generics.UpdateAPIView):
     queryset = Service.objects.all()
     serializer_class = CreateServiceSerializer
     lookup_field = 'pk'
-    authentication_classes = (CsrfExemptSessionAuthentication,)
+    authentication_classes = (TokenAuthentication,)
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -271,12 +282,11 @@ class DeleteServiceView(generics.DestroyAPIView):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     permission_classes = [permissions.IsAdminUser]
-    authentication_classes = (CsrfExemptSessionAuthentication,)
+    authentication_classes = (TokenAuthentication,)
 
-    # authentication_classes = (CsrfExemptSessionAuthentication,)
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({"message": "Service removed"}, status=status.HTTP_200_OK)
 
-#

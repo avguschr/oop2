@@ -49,7 +49,7 @@ class Order(models.Model):
     services = models.ManyToManyField(Service, blank=False, null=False, related_name='order')
     phone = models.CharField(validators=[phoneNumberRegex], max_length=16, null=True)
     comment = models.TextField(null=True, blank=True)
-    sum = models.IntegerField(null=False)
+    sum = models.IntegerField(null=True)
     class Meta:
         verbose_name = 'Заказ'
         verbose_name_plural = 'Заказы'

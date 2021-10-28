@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 from datetime import timedelta
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -58,7 +59,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
-        'knox.auth.TokenAuthentication',
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'salon.csrf.CsrfExemptSessionAuthentication'
@@ -66,6 +66,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': [
         'rest_framework.schemas.openapi.AutoSchema'
     ]
+
 }
 
 ROOT_URLCONF = 'djangoProject2.urls'
@@ -144,4 +145,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
-REST_KNOX = {'TOKEN_TTL': timedelta(hours=100)}
+REST_KNOX = {
+    'USER_SERIALIZER': 'salon.serializers.UserSerializer',
+    'TOKEN_TTL': timedelta(hours=24 * 7),
+    'AUTH_HEADER_PREFIX': 'Bearer'
+}
